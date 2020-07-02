@@ -5,35 +5,43 @@ import time
 import pyglet
 from pyglet.window import key
 
-WIDTH, HEIGTH = 800, 600
+WIDTH, HEIGHT = 800, 600
 N_BALL = 100
 
-red_ball_image = pyglet.image.load("red_ball.png")
+# Prep images
+pyglet.resource.path = ["resources"]
+pyglet.resource.reindex()
+
+red_ball_image = pyglet.resource.image("red_ball.png")
 red_ball_image.anchor_x = red_ball_image.width // 2
 red_ball_image.anchor_y = red_ball_image.height // 2
 
-blue_ball_image = pyglet.image.load("blue_ball.png")
+blue_ball_image = pyglet.resource.image("blue_ball.png")
 blue_ball_image.anchor_x = blue_ball_image.width // 2
 blue_ball_image.anchor_y = blue_ball_image.height // 2
 
+background_image = pyglet.resource.image("background.png")
+
 
 class RandomBall(pyglet.sprite.Sprite):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, window, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.x_speed = random.choice([-0.5, 0.5])
         self.y_speed = random.choice([-0.5, 0.5])
 
+        self.window_width = window.width
+        self.window_height = window.height
+
+        # Attributes to for scheduling random
+        # movement.
         self.time_change = random.uniform(0.0, 1.0)
-        # self.time_change = random.lognormvariate(1, 1)
         self.update_time = 0
         self.current_time = 0
-        self.collision_count = 0
         self.decay = 0.4
 
     def update(self, dt, other_ball):
         self.wall_collision()
         self.process_random_move(dt)
-
         self.process_collisions(other_ball)
         self.x += self.x_speed
         self.y += self.y_speed
@@ -51,14 +59,14 @@ class RandomBall(pyglet.sprite.Sprite):
             )[0]
 
     def wall_collision(self):
-        # Hitting right side
-        if ((self.x + (self.width / 2)) >= WIDTH) or (
+        # Hitting right | left side of screen
+        if ((self.x + (self.width / 2)) >= self.window_width) or (
             (self.x - (self.width / 2)) <= 0
         ):
             self.x_speed *= -1 * self.decay
             self.x += self.x_speed * (1 / self.decay)
-        # Hitting top of screen
-        if ((self.y + (self.height / 2)) >= HEIGTH) or (
+        # Hitting top | bottom of screen
+        if ((self.y + (self.height / 2)) >= self.window_height) or (
             (self.y - (self.height / 2)) <= 0
         ):
             self.y_speed *= -1 * self.decay
@@ -75,13 +83,11 @@ class RandomBall(pyglet.sprite.Sprite):
         )
 
     def ball_collide(self, other_ball):
-        # Hitting from left
         min_distance = (self.width / 2) + (other_ball.width / 2)
         return min_distance >= self.distance(self.position, other_ball.position)
 
     def process_collisions(self, other_ball):
         if self.ball_collide(other_ball):
-            self.collision_count += 1
             self.x_speed = (-1 * self.x_speed) + other_ball.x_speed
             self.y_speed = (-1 * self.y_speed) + other_ball.y_speed
             self.x += self.x_speed
@@ -89,19 +95,24 @@ class RandomBall(pyglet.sprite.Sprite):
 
 
 class ColliderBall(pyglet.sprite.Sprite):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, batch, window, *args, **kwargs):
+        super().__init__(batch=batch, *args, **kwargs)
 
         self.x_speed = 0
         self.y_speed = 0
 
+        self.collider_label = pyglet.text.Label(
+            text=" ", x=10, y=(window.height - 20), batch=batch
+        )
+
     def update(self):
+        self.collider_label.text = f"x: {self.x}, y: {self.y}"
         self.x += self.x_speed
         self.y += self.y_speed
 
 
 class Window(pyglet.window.Window):
-    def __init__(self, random_balls=100, *args, **kwargs):
+    def __init__(self, background_img, random_balls=100, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         self.batch = pyglet.graphics.Batch()
@@ -111,8 +122,10 @@ class Window(pyglet.window.Window):
         self.fill_ball_list()
 
         self.collider_ball = ColliderBall(
-            img=blue_ball_image, x=100, y=100, batch=self.batch
+            img=blue_ball_image, x=100, y=100, batch=self.batch, window=self
         )
+
+        self.background_img = background_img
 
         self.set_exclusive_mouse(True)
         pyglet.clock.schedule_interval(self.update, 1 / 120)
@@ -124,11 +137,14 @@ class Window(pyglet.window.Window):
                 random.normalvariate(self.height // 2, 50),
             )
             self.ball_sprites.append(
-                RandomBall(red_ball_image, x, y, batch=self.batch)
+                RandomBall(
+                    img=red_ball_image, x=x, y=y, batch=self.batch, window=self,
+                )
             )
 
     def on_draw(self):
         self.clear()
+        self.background_img.blit(0, 0)
         self.batch.draw()
 
     def update(self, dt):
@@ -155,7 +171,8 @@ if __name__ == "__main__":
     window = Window(
         random_balls=N_BALL,
         width=WIDTH,
-        height=HEIGTH,
+        height=HEIGHT,
         caption="Collider Ball!",
+        background_img=background_image,
     )
     pyglet.app.run()
