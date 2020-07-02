@@ -2,7 +2,7 @@
 
 A small game to explore collision and simulation with pyglet.  
 
-![Game Example](collider_ball.gif)
+![Game Example](Collider_Ball_demo.gif)
 
 To run, clone the repo then run the following:  
 ```python
