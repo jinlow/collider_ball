@@ -6,7 +6,7 @@ import pyglet
 from pyglet.window import key
 
 WIDTH, HEIGHT = 800, 600
-N_BALL = 100
+N_BALL = 200
 
 # Prep images
 pyglet.resource.path = ["resources"]
